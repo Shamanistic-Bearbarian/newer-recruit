@@ -88,23 +88,25 @@ export default function BuilderToolbar({ roster }: { roster: Roster }) {
             ))}
           </select>
         </label>
-        <label className="flex items-center gap-1 text-slate-400">
-          Detachment
-          <select
-            value={detachmentValid ? roster.detachmentId : ""}
-            onChange={(e) => setDetachment(e.target.value)}
-            className="rounded border border-slate-700 bg-slate-900 px-2 py-1 text-slate-100"
-          >
-            <option value="" disabled>
-              Select…
-            </option>
-            {detachments.map((d) => (
-              <option key={d.id} value={d.id}>
-                {d.name}
+        {detachments.length > 0 && (
+          <label className="flex items-center gap-1 text-slate-400">
+            Detachment
+            <select
+              value={detachmentValid ? roster.detachmentId : ""}
+              onChange={(e) => setDetachment(e.target.value)}
+              className="rounded border border-slate-700 bg-slate-900 px-2 py-1 text-slate-100"
+            >
+              <option value="" disabled>
+                Select…
               </option>
-            ))}
-          </select>
-        </label>
+              {detachments.map((d) => (
+                <option key={d.id} value={d.id}>
+                  {d.name}
+                </option>
+              ))}
+            </select>
+          </label>
+        )}
         <label className="flex items-center gap-1 text-slate-400">
           Limit
           <select

@@ -80,7 +80,9 @@ export type Datasheet = {
   id: string;
   name: string;
   factionId: string;
-  role: BattlefieldRole;
+  /** Primary battlefield role; a {@link BattlefieldRole} but typed loosely to
+   * accept any category coming from imported data. */
+  role: string;
   /** Full keyword list, e.g. `["Infantry","Character","Imperium"]`. */
   keywords: string[];
   models: ModelProfile[];

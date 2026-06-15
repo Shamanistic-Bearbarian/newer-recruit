@@ -101,9 +101,11 @@ export function validateRoster(roster: Roster): ValidationResult {
   if (!faction) {
     errors.push({ level: "error", message: "No faction selected." });
   }
-  if (!detachment) {
+  // Detachments are only required for factions that define them (Stage 2 data).
+  const factionHasDetachments = (faction?.detachments.length ?? 0) > 0;
+  if (factionHasDetachments && !detachment) {
     errors.push({ level: "error", message: "No detachment selected." });
-  } else if (detachment.factionId !== roster.factionId) {
+  } else if (detachment && detachment.factionId !== roster.factionId) {
     errors.push({
       level: "error",
       message: `Detachment "${detachment.name}" does not belong to this faction.`,

@@ -66,20 +66,22 @@ export default function StartScreen() {
             </select>
           </label>
 
-          <label className="block text-sm">
-            <span className="text-slate-400">Detachment</span>
-            <select
-              value={detachmentId}
-              onChange={(e) => setDetachmentId(e.target.value)}
-              className="mt-1 w-full rounded-md border border-slate-700 bg-slate-900 px-3 py-2 text-slate-100"
-            >
-              {detachments.map((d) => (
-                <option key={d.id} value={d.id}>
-                  {d.name}
-                </option>
-              ))}
-            </select>
-          </label>
+          {detachments.length > 0 && (
+            <label className="block text-sm">
+              <span className="text-slate-400">Detachment</span>
+              <select
+                value={detachmentId}
+                onChange={(e) => setDetachmentId(e.target.value)}
+                className="mt-1 w-full rounded-md border border-slate-700 bg-slate-900 px-3 py-2 text-slate-100"
+              >
+                {detachments.map((d) => (
+                  <option key={d.id} value={d.id}>
+                    {d.name}
+                  </option>
+                ))}
+              </select>
+            </label>
+          )}
 
           <label className="block text-sm">
             <span className="text-slate-400">Game size</span>

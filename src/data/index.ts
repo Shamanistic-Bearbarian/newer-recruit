@@ -1,5 +1,8 @@
 // Game-data registry: the single source of truth the app reads from.
-// Add a faction by importing it and pushing it into FACTIONS.
+//
+// Faction data is generated from the community BSData BattleScribe catalogues
+// by `scripts/import-bsdata.mjs` into `generated/factions.json`. Regenerate
+// with `npm run import-data`.
 
 import type {
   Datasheet,
@@ -8,15 +11,26 @@ import type {
   Faction,
   GameSize,
 } from "@/data/types";
-import { spaceMarines } from "@/data/factions/space-marines";
-import { necrons } from "@/data/factions/necrons";
+import factionsData from "@/data/generated/factions.json";
+import metaData from "@/data/generated/meta.json";
 
-/** Whether the bundled data is placeholder (true until real 11th ed data exists). */
-export const DATA_IS_PLACEHOLDER = true;
+export const META = metaData as {
+  edition: string;
+  source: string;
+  generatedAt: string;
+  factionCount: number;
+  datasheetCount: number;
+};
 
-export const FACTIONS: Faction[] = [spaceMarines, necrons];
+/**
+ * The bundled data is real 10th-edition data (used until 11th edition is
+ * published), not invented placeholders.
+ */
+export const DATA_IS_PLACEHOLDER = false;
 
-/** Standard game sizes / points brackets (placeholder values). */
+export const FACTIONS = factionsData as unknown as Faction[];
+
+/** Standard game sizes / points brackets. */
 export const GAME_SIZES: GameSize[] = [
   { id: "combat-patrol", name: "Combat Patrol", points: 500 },
   { id: "incursion", name: "Incursion", points: 1000 },

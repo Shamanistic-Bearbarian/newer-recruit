@@ -9,6 +9,8 @@ import type { BattlefieldRole, Datasheet } from "@/data/types";
 import { useBuilder } from "@/lib/useBuilder";
 import DatasheetView from "@/components/DatasheetView";
 
+// Preferred ordering; any role not listed is appended alphabetically so no
+// units are ever hidden from the catalog.
 const ROLE_ORDER: BattlefieldRole[] = [
   "Epic Hero",
   "Character",
@@ -22,6 +24,14 @@ const ROLE_ORDER: BattlefieldRole[] = [
   "Fortification",
   "Other",
 ];
+
+function orderedRoles(roles: string[]): string[] {
+  const known = ROLE_ORDER.filter((r) => roles.includes(r));
+  const extra = roles
+    .filter((r) => !ROLE_ORDER.includes(r as BattlefieldRole))
+    .sort();
+  return [...known, ...extra];
+}
 
 function CatalogRow({ ds }: { ds: Datasheet }) {
   const { addUnit } = useBuilder();
@@ -64,10 +74,13 @@ export default function UnitCatalog({ factionId }: { factionId: string }) {
     ? all.filter((d) => d.name.toLowerCase().includes(query.toLowerCase()))
     : all;
 
-  const byRole = ROLE_ORDER.map((role) => ({
-    role,
-    units: filtered.filter((d) => d.role === role),
-  })).filter((g) => g.units.length > 0);
+  const roles = orderedRoles([...new Set(filtered.map((d) => d.role))]);
+  const byRole = roles
+    .map((role) => ({
+      role,
+      units: filtered.filter((d) => d.role === role),
+    }))
+    .filter((g) => g.units.length > 0);
 
   return (
     <div className="space-y-3">

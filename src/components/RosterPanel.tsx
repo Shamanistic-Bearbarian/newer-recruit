@@ -62,14 +62,15 @@ function UnitRow({ roster, unit }: { roster: Roster; unit: RosterUnit }) {
             >
               {ds.sizes.map((s, i) => (
                 <option key={i} value={i}>
-                  {s.models} models — {s.points} pts
+                  {s.models > 0 ? `${s.models} models — ` : ""}
+                  {s.points} pts
                 </option>
               ))}
             </select>
           </label>
         )}
 
-        {ds.isCharacter && !ds.isEpicHero && (
+        {ds.isCharacter && !ds.isEpicHero && enhancements.length > 0 && (
           <label className="flex items-center gap-1 text-xs text-slate-400">
             Enhancement
             <select

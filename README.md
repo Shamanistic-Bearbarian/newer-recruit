@@ -2,16 +2,20 @@
 
 A web-based army list builder for **Warhammer 40,000 (11th edition)** — inspired by [New Recruit](https://www.newrecruit.eu/).
 
-> ⚠️ **11th edition is not released yet.** Until official data exists, this app ships with clearly-marked **placeholder** unit data (`DATA_IS_PLACEHOLDER = true`) so the builder can be developed and tested. None of the bundled stats, points, or rules represent real game rules.
+> ⚠️ **11th edition is not released yet.** The builder currently uses the community **10th-edition** data from [BSData](https://github.com/BSData/wh40k-10e) (36 factions, ~1,140 datasheets, **Legends excluded**) so it's usable today. When BSData publishes 11th-edition catalogues, re-point the importer and regenerate — no app changes needed.
 
 ## Features (MVP)
 
-- Pick a **faction**, **detachment**, and **game size** (points limit).
-- Browse a faction's **datasheets** (grouped by battlefield role) with full stat/weapon/ability profiles, and add units to your list.
-- Choose **unit sizes** and attach **enhancements** to eligible Characters.
-- Live **points total** vs. limit, with a progress bar.
-- **Validation**: points limit, detachment selection, enhancement rules (max per army, one per unit, Characters only), unique Epic Heroes.
+- Pick a **faction** and **game size** (points limit).
+- Browse a faction's complete **datasheet catalogue** (grouped by battlefield role) with stat profiles, weapon profiles, abilities, and keywords; add units to your list.
+- Live **points total** against your limit, with a progress bar.
+- **Validation**: points limit, enhancement rules (max per army, one per unit, Characters only), unique Epic Heroes.
 - **Save** lists to your browser, **export**/**import** them as `.nr.json` files.
+
+### Not yet (planned)
+- Exact **per-unit-size pricing** and **wargear/loadout selection** (BattleScribe cost-modifier trees — Stage 2).
+- **Detachments + enhancements** extracted from the data (Stage 2).
+- Merging Space Marine **chapters** under one faction (currently separate catalogue entries).
 
 Lists are stored locally in the browser (`localStorage`) — no account or server required.
 
@@ -37,7 +41,8 @@ src/
   data/
     types.ts            # the typed domain model (factions, datasheets, etc.)
     index.ts            # data registry + lookups (getFaction/getDatasheet/…)
-    factions/           # one file per faction (PLACEHOLDER data today)
+    generated/          # factions.json + meta.json (produced by the importer)
+  ../scripts/import-bsdata.mjs   # BSData (BattleScribe) -> generated JSON
   lib/
     roster.ts           # roster model, points totals, validation engine
     storage.ts          # localStorage CRUD + file export/import
@@ -46,21 +51,25 @@ src/
   app/                   # Next.js App Router (layout + page)
 ```
 
-## Adding / replacing game data
+## Game data & the importer
 
-All game data is plain typed TypeScript under `src/data/factions/`. To add a faction:
+Faction data is **generated** from the community [BSData](https://github.com/BSData/wh40k-10e)
+BattleScribe catalogues (the same source New Recruit uses) by a build-time converter:
 
-1. Create `src/data/factions/<faction>.ts` exporting a `Faction` (see `types.ts`).
-2. Import it in `src/data/index.ts` and add it to the `FACTIONS` array.
+```bash
+npm run import-data          # clones BSData into .bsdata-cache/ and regenerates
+node scripts/import-bsdata.mjs <path-to-bsdata-checkout>   # or point at a local copy
+```
 
-When official 11th edition data is available, replace the placeholder faction files
-with real data and set `DATA_IS_PLACEHOLDER = false` in `src/data/index.ts`.
+It parses the `.gst`/`.cat` XML, resolves the BattleScribe entry/info link graph,
+extracts datasheets (categories, model profiles, weapons, abilities, base points),
+**excludes Legends**, and writes `src/data/generated/{factions.json,meta.json}`.
+The app reads that JSON via the registry in `src/data/index.ts`.
 
-### Planned: BattleScribe import
+To target **11th edition** when it ships: change `SOURCE_REPO` in
+`scripts/import-bsdata.mjs` to the 11th-edition BSData repo and re-run `npm run import-data`.
 
-New Recruit reads community-maintained [BattleScribe](https://github.com/BSData)
-`.cat`/`.gst` catalogs. A future importer can map that format into the `Faction`
-types here, letting the builder load community data once it exists for 11th edition.
+The typed domain model lives in `src/data/types.ts`.
 
 ---
 

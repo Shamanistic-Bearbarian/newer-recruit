@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import { BuilderProvider } from "@/lib/useBuilder";
-import { DATA_IS_PLACEHOLDER } from "@/data";
+import { META } from "@/data";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -43,15 +43,14 @@ export default function RootLayout({
             </div>
           </header>
 
-          {DATA_IS_PLACEHOLDER && (
-            <div className="border-b border-amber-900/60 bg-amber-950/40">
-              <p className="mx-auto max-w-6xl px-4 py-2 text-xs text-amber-300">
-                ⚠ 11th edition isn&apos;t released yet — all unit data here is{" "}
-                <strong>placeholder</strong> for development and does not
-                represent real game rules.
-              </p>
-            </div>
-          )}
+          <div className="border-b border-amber-900/60 bg-amber-950/40">
+            <p className="mx-auto max-w-6xl px-4 py-2 text-xs text-amber-300">
+              ⚠ 11th edition isn&apos;t released yet. This builder currently uses
+              community <strong>10th-edition</strong> data ({META.factionCount}{" "}
+              factions, {META.datasheetCount} datasheets, Legends excluded) and
+              will switch to 11th-edition data when it&apos;s published.
+            </p>
+          </div>
 
           <main className="mx-auto w-full max-w-6xl flex-1 px-4 py-6">
             {children}
