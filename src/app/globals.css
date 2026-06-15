@@ -1,0 +1,11 @@
+@import "tailwindcss";
+
+@theme inline {
+  --font-sans: var(--font-geist-sans);
+  --font-mono: var(--font-geist-mono);
+}
+
+/* Dark app theme; per-element colours are set with Tailwind utilities. */
+html {
+  color-scheme: dark;
+}
