@@ -45,10 +45,11 @@ export default function RootLayout({
 
           <div className="border-b border-amber-900/60 bg-amber-950/40">
             <p className="mx-auto max-w-6xl px-4 py-2 text-xs text-amber-300">
-              ⚠ 11th edition isn&apos;t released yet. This builder currently uses
-              community <strong>10th-edition</strong> data ({META.factionCount}{" "}
-              factions, {META.datasheetCount} datasheets, Legends excluded) and
-              will switch to 11th-edition data when it&apos;s published.
+              ⚙ <strong>11th edition</strong>: points, detachments &amp;
+              enhancements are from the official Munitorum Field Manual.
+              Datasheet <strong>profiles</strong> (stats/weapons/abilities) aren&apos;t
+              published for 11th yet, so most ({META.profileCoveragePct}%) are
+              borrowed from 10th edition and marked <em>provisional</em>.
             </p>
           </div>
 

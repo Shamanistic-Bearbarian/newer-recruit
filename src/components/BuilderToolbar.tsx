@@ -102,6 +102,7 @@ export default function BuilderToolbar({ roster }: { roster: Roster }) {
               {detachments.map((d) => (
                 <option key={d.id} value={d.id}>
                   {d.name}
+                  {d.dp != null ? ` (${d.dp} DP)` : ""}
                 </option>
               ))}
             </select>

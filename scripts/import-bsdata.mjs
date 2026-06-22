@@ -16,7 +16,7 @@ import { XMLParser } from "fast-xml-parser";
 import { execSync } from "node:child_process";
 import { existsSync, mkdirSync, readdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
-import { fileURLToPath } from "node:url";
+import { fileURLToPath, pathToFileURL } from "node:url";
 
 const SOURCE_REPO = "https://github.com/BSData/wh40k-10e.git";
 const EDITION = "Warhammer 40,000 — 10th edition (BSData)";
@@ -229,17 +229,20 @@ function extractDatasheet(root) {
 
 // --- main -------------------------------------------------------------------
 
-function slug(s) {
+export function slug(s) {
   return s.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
 }
 
-function main() {
-  const srcDir = resolveSourceDir();
+/**
+ * Parse a BSData checkout and return the faction array (does not write files).
+ * Reusable by the MFM importer, which borrows these profiles by unit name.
+ */
+export function buildTenth(srcDir) {
   const files = readdirSync(srcDir).filter(
     (f) => f.endsWith(".cat") || f.endsWith(".gst")
   );
 
-  console.log(`Parsing ${files.length} files & indexing ids…`);
+  console.log(`Parsing ${files.length} BSData files & indexing ids…`);
   const parsed = new Map(); // filename -> parsed root object
   for (const f of files) {
     const xml = readFileSync(join(srcDir, f), "utf-8");
@@ -283,7 +286,11 @@ function main() {
   }
 
   factions.sort((a, b) => a.name.localeCompare(b.name));
+  return factions;
+}
 
+function main() {
+  const factions = buildTenth(resolveSourceDir());
   mkdirSync(outDir, { recursive: true });
   writeFileSync(join(outDir, "factions.json"), JSON.stringify(factions));
   const totalDs = factions.reduce((n, f) => n + f.datasheets.length, 0);
@@ -301,11 +308,10 @@ function main() {
       2
     )
   );
-
-  console.log(`\nWrote ${factions.length} factions, ${totalDs} datasheets:`);
-  for (const f of factions) {
-    console.log(`  ${f.name.padEnd(40)} ${f.datasheets.length}`);
-  }
+  console.log(`\nWrote ${factions.length} factions, ${totalDs} datasheets.`);
 }
 
-main();
+// Run standalone (writes a 10th-edition-only dataset) only when invoked directly.
+if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
+  main();
+}

@@ -77,6 +77,7 @@ export default function StartScreen() {
                 {detachments.map((d) => (
                   <option key={d.id} value={d.id}>
                     {d.name}
+                    {d.dp != null ? ` (${d.dp} DP)` : ""}
                   </option>
                 ))}
               </select>

@@ -25,7 +25,7 @@ import {
   saveCurrentRoster,
   upsertRoster,
 } from "@/lib/storage";
-import { factionDetachments } from "@/data";
+import { factionDetachments, getFaction } from "@/data";
 
 type Action =
   | { type: "hydrate"; current: Roster | null }
@@ -157,7 +157,11 @@ export function BuilderProvider({ children }: { children: ReactNode }) {
   // and there is no hydration mismatch; localStorage is unavailable on the
   // server. The synchronous setState here is intentional for that reason.
   useEffect(() => {
-    dispatch({ type: "hydrate", current: loadCurrentRoster() });
+    // Drop a persisted working roster whose faction no longer exists (e.g. a
+    // draft from an earlier dataset), so we land cleanly on the start screen.
+    const loaded = loadCurrentRoster();
+    const valid = loaded && getFaction(loaded.factionId) ? loaded : null;
+    dispatch({ type: "hydrate", current: valid });
     // eslint-disable-next-line react-hooks/set-state-in-effect
     setSaved(loadSavedRosters());
     setHydrated(true);

@@ -90,10 +90,19 @@ export type Datasheet = {
   abilities: Ability[];
   /** Available unit sizes with points. Always at least one entry. */
   sizes: SizeOption[];
+  /** Optional wargear items with a per-item points cost (display/reference). */
+  wargear?: { name: string; points: number }[];
+  /** Units this Leader/Support can attach to (by name). */
+  attachTo?: string[];
   /** Unique named character — at most one per army. */
   isEpicHero?: boolean;
   /** Can be given an Enhancement (CHARACTER units that aren't Epic Heroes). */
   isCharacter?: boolean;
+  /**
+   * True when the stat/weapon/ability profile is borrowed from a previous
+   * edition because the current edition's datasheet data isn't published yet.
+   */
+  provisional?: boolean;
 };
 
 export type Enhancement = {
@@ -113,6 +122,10 @@ export type Detachment = {
   id: string;
   factionId: string;
   name: string;
+  /** Detachment Points cost (11th edition), or null if not stated. */
+  dp?: number | null;
+  /** Force Disposition / primary objective, if stated. */
+  objective?: string | null;
   rule: Ability;
   enhancements: Enhancement[];
 };

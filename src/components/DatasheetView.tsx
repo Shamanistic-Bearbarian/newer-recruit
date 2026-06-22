@@ -14,8 +14,21 @@ function StatCell({ label, value }: { label: string; value: string | number }) {
 }
 
 export default function DatasheetView({ datasheet }: { datasheet: Datasheet }) {
+  const hasProfile = datasheet.models.length > 0 || datasheet.weapons.length > 0;
   return (
     <div className="space-y-3 text-slate-200">
+      {datasheet.provisional && (
+        <p className="rounded bg-amber-950/50 px-2 py-1 text-[0.7rem] text-amber-300">
+          Profile shown is 10th-edition data (provisional) — 11th-edition
+          datasheet not yet published. Points are 11th edition.
+        </p>
+      )}
+      {!hasProfile && (
+        <p className="rounded bg-slate-800 px-2 py-1 text-[0.7rem] text-slate-400">
+          No datasheet profile available yet for 11th edition. Points &amp;
+          detachment data only.
+        </p>
+      )}
       {datasheet.models.map((m) => (
         <div key={m.name} className="space-y-1">
           {datasheet.models.length > 1 && (
@@ -80,6 +93,22 @@ export default function DatasheetView({ datasheet }: { datasheet: Datasheet }) {
             </li>
           ))}
         </ul>
+      )}
+
+      {datasheet.wargear && datasheet.wargear.length > 0 && (
+        <div className="text-xs">
+          <span className="font-semibold text-slate-300">Wargear options:</span>
+          <ul className="mt-1 space-y-0.5">
+            {datasheet.wargear.map((w) => (
+              <li key={w.name} className="text-slate-400">
+                {w.name}{" "}
+                <span className="text-slate-500">
+                  (+{w.points} pts/item)
+                </span>
+              </li>
+            ))}
+          </ul>
+        </div>
       )}
 
       <div className="flex flex-wrap gap-1">

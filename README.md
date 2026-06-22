@@ -2,20 +2,29 @@
 
 A web-based army list builder for **Warhammer 40,000 (11th edition)** — inspired by [New Recruit](https://www.newrecruit.eu/).
 
-> ⚠️ **11th edition is not released yet.** The builder currently uses the community **10th-edition** data from [BSData](https://github.com/BSData/wh40k-10e) (36 factions, ~1,140 datasheets, **Legends excluded**) so it's usable today. When BSData publishes 11th-edition catalogues, re-point the importer and regenerate — no app changes needed.
+> ⚠️ **11th-edition data is partial.** Points, detachments, enhancements and
+> wargear costs come from the official **Munitorum Field Manual** (via
+> [`BSData/wh40k-11e-mfm`](https://github.com/BSData/wh40k-11e-mfm), 30 factions).
+> The actual **datasheets** (stat lines, weapon profiles, abilities) aren't
+> published for 11th edition yet, so they're borrowed from 10th-edition
+> [BSData](https://github.com/BSData/wh40k-10e) by unit name (~93% matched) and
+> shown as **provisional**. When an 11th-edition catalogue ships, point the
+> importer at it and regenerate.
 
 ## Features (MVP)
 
-- Pick a **faction** and **game size** (points limit).
-- Browse a faction's complete **datasheet catalogue** (grouped by battlefield role) with stat profiles, weapon profiles, abilities, and keywords; add units to your list.
+- Pick a **faction**, **detachment** (with Detachment Points), and **game size**.
+- Browse a faction's complete **datasheet catalogue** (grouped by battlefield role): real 11th-edition **per-size points**, plus provisional 10e stat/weapon/ability profiles and wargear-option costs.
+- Attach **enhancements** (real 11e, per detachment) to eligible Characters.
 - Live **points total** against your limit, with a progress bar.
-- **Validation**: points limit, enhancement rules (max per army, one per unit, Characters only), unique Epic Heroes.
+- **Validation**: points limit, detachment selection, enhancement rules (max per army, one per unit, Characters only), unique Epic Heroes.
 - **Save** lists to your browser, **export**/**import** them as `.nr.json` files.
 
 ### Not yet (planned)
-- Exact **per-unit-size pricing** and **wargear/loadout selection** (BattleScribe cost-modifier trees — Stage 2).
-- **Detachments + enhancements** extracted from the data (Stage 2).
-- Merging Space Marine **chapters** under one faction (currently separate catalogue entries).
+- True **11th-edition datasheet profiles** (await an 11e catalogue; profiles are currently provisional 10e).
+- **Wargear/loadout selection** affecting points (costs are displayed, not yet selectable).
+- **Detachment Points budget** enforcement, and requisition-threshold pricing tiers.
+- Merging Space Marine **chapters** under one faction.
 
 Lists are stored locally in the browser (`localStorage`) — no account or server required.
 
@@ -42,7 +51,8 @@ src/
     types.ts            # the typed domain model (factions, datasheets, etc.)
     index.ts            # data registry + lookups (getFaction/getDatasheet/…)
     generated/          # factions.json + meta.json (produced by the importer)
-  ../scripts/import-bsdata.mjs   # BSData (BattleScribe) -> generated JSON
+  ../scripts/import-mfm.mjs      # MFM (11e points) + 10e profiles -> generated JSON
+  ../scripts/import-bsdata.mjs   # BSData (BattleScribe) parser/builder (10e)
   lib/
     roster.ts           # roster model, points totals, validation engine
     storage.ts          # localStorage CRUD + file export/import
@@ -51,23 +61,29 @@ src/
   app/                   # Next.js App Router (layout + page)
 ```
 
-## Game data & the importer
+## Game data & the importers
 
-Faction data is **generated** from the community [BSData](https://github.com/BSData/wh40k-10e)
-BattleScribe catalogues (the same source New Recruit uses) by a build-time converter:
+Faction data is **generated** into `src/data/generated/{factions.json,meta.json}`,
+which the app reads via the registry in `src/data/index.ts`:
 
 ```bash
-npm run import-data          # clones BSData into .bsdata-cache/ and regenerates
-node scripts/import-bsdata.mjs <path-to-bsdata-checkout>   # or point at a local copy
+npm run import-data       # 11th edition: MFM points + provisional 10e profiles
+npm run import-data-10e   # 10th-edition-only dataset (full real datasheets)
 ```
 
-It parses the `.gst`/`.cat` XML, resolves the BattleScribe entry/info link graph,
-extracts datasheets (categories, model profiles, weapons, abilities, base points),
-**excludes Legends**, and writes `src/data/generated/{factions.json,meta.json}`.
-The app reads that JSON via the registry in `src/data/index.ts`.
+`scripts/import-mfm.mjs` (the default) clones the two source repos into
+`.bsdata-cache/`, then:
 
-To target **11th edition** when it ships: change `SOURCE_REPO` in
-`scripts/import-bsdata.mjs` to the 11th-edition BSData repo and re-run `npm run import-data`.
+1. Reads the **Munitorum Field Manual** YAML (`BSData/wh40k-11e-mfm`) for the real
+   11th-edition unit list, per-size points, wargear costs, detachments
+   (with Detachment Points) and enhancements. Legends are excluded.
+2. Parses **10th-edition BSData** `.gst`/`.cat` XML (`scripts/import-bsdata.mjs`,
+   reused as a library) to recover stat lines, weapon profiles and abilities,
+   and matches them to 11e units **by name** (~93% coverage). Borrowed profiles
+   are flagged `provisional: true`.
+
+When an 11th-edition **datasheet catalogue** is published, add a parser for it (or
+point step 2 at it) so profiles are native rather than provisional.
 
 The typed domain model lives in `src/data/types.ts`.
 

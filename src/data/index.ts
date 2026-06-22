@@ -16,16 +16,16 @@ import metaData from "@/data/generated/meta.json";
 
 export const META = metaData as {
   edition: string;
-  source: string;
+  sources: { points: string; provisionalProfiles: string };
   generatedAt: string;
   factionCount: number;
   datasheetCount: number;
+  detachmentCount: number;
+  /** % of datasheets whose stat/weapon profile was borrowed from 10th edition. */
+  profileCoveragePct: number;
 };
 
-/**
- * The bundled data is real 10th-edition data (used until 11th edition is
- * published), not invented placeholders.
- */
+/** Bundled data is real, not invented placeholders. */
 export const DATA_IS_PLACEHOLDER = false;
 
 export const FACTIONS = factionsData as unknown as Faction[];
