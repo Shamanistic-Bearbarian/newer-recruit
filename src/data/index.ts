@@ -30,13 +30,53 @@ export const DATA_IS_PLACEHOLDER = false;
 
 export const FACTIONS = factionsData as unknown as Faction[];
 
-/** Standard game sizes / points brackets. */
+/**
+ * Battle sizes and their 11th-edition army-construction limits.
+ *
+ * Values are from the 11th-edition Core Rules ("Muster Armies") as reported by
+ * post-launch sources; Onslaught's DP/enhancement figures are the least certain.
+ * TODO: verify every number against the official free Core Rules PDF
+ * (warhammer-community.com). They are centralised here so corrections are a
+ * one-line edit. The rule-of-two/four (max 2 copies of a datasheet, 4 for
+ * Battleline) is a core rule applied at every size.
+ */
 export const GAME_SIZES: GameSize[] = [
-  { id: "combat-patrol", name: "Combat Patrol", points: 500 },
-  { id: "incursion", name: "Incursion", points: 1000 },
-  { id: "strike-force", name: "Strike Force", points: 2000 },
-  { id: "onslaught", name: "Onslaught", points: 3000 },
+  {
+    id: "incursion",
+    name: "Incursion",
+    points: 1000,
+    dp: 2,
+    enhancements: 2,
+    unitCopyLimit: 2,
+    battlelineCopyLimit: 4,
+  },
+  {
+    id: "strike-force",
+    name: "Strike Force",
+    points: 2000,
+    dp: 3,
+    enhancements: 4,
+    unitCopyLimit: 2,
+    battlelineCopyLimit: 4,
+  },
+  {
+    id: "onslaught",
+    name: "Onslaught",
+    points: 3000,
+    dp: 4,
+    enhancements: 6,
+    unitCopyLimit: 2,
+    battlelineCopyLimit: 4,
+  },
 ];
+
+export const DEFAULT_GAME_SIZE =
+  GAME_SIZES.find((g) => g.id === "strike-force") ?? GAME_SIZES[0];
+
+/** The battle size matching a points limit, or the default if none matches. */
+export function gameSizeForPoints(points: number): GameSize {
+  return GAME_SIZES.find((g) => g.points === points) ?? DEFAULT_GAME_SIZE;
+}
 
 // --- Pre-built lookup maps --------------------------------------------------
 

@@ -4,7 +4,13 @@
 // an existing one from the saved library.
 
 import { useRef, useState } from "react";
-import { FACTIONS, GAME_SIZES, factionDetachments, getFaction } from "@/data";
+import {
+  DEFAULT_GAME_SIZE,
+  FACTIONS,
+  GAME_SIZES,
+  factionDetachments,
+  getFaction,
+} from "@/data";
 import { rosterPoints } from "@/lib/roster";
 import { useBuilder } from "@/lib/useBuilder";
 import { parseRosterFile } from "@/lib/storage";
@@ -15,7 +21,7 @@ export default function StartScreen() {
   const [factionId, setFactionId] = useState(FACTIONS[0]?.id ?? "");
   const detachments = factionDetachments(factionId);
   const [detachmentId, setDetachmentId] = useState(detachments[0]?.id ?? "");
-  const [pointsLimit, setPointsLimit] = useState(GAME_SIZES[2]?.points ?? 2000);
+  const [pointsLimit, setPointsLimit] = useState(DEFAULT_GAME_SIZE.points);
   const [importError, setImportError] = useState<string | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
 
@@ -93,7 +99,7 @@ export default function StartScreen() {
             >
               {GAME_SIZES.map((g) => (
                 <option key={g.id} value={g.points}>
-                  {g.name} — {g.points} pts
+                  {g.name} — {g.points} pts ({g.dp} DP, {g.enhancements} enh)
                 </option>
               ))}
             </select>

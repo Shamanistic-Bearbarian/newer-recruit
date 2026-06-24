@@ -15,16 +15,20 @@ A web-based army list builder for **Warhammer 40,000 (11th edition)** — inspir
 
 - Pick a **faction**, **detachment** (with Detachment Points), and **game size**.
 - Browse a faction's complete **datasheet catalogue** (grouped by battlefield role): real 11th-edition **per-size points**, plus provisional 10e stat/weapon/ability profiles and wargear-option costs.
-- Attach **enhancements** (real 11e, per detachment) to eligible Characters.
-- Live **points total** against your limit, with a progress bar.
-- **Validation**: points limit, detachment selection, enhancement rules (max per army, one per unit, Characters only), unique Epic Heroes.
+- Attach **enhancements** (real 11e, per detachment) to eligible units, including the new **Upgrade** tag (non-Characters, shareable across up to 3 units).
+- Live **points / Detachment Points / enhancement** usage against your battle-size budget.
+- **11th-edition validation** ("Muster Armies"): points limit, Detachment Points budget, enhancement cap, the rule of two/four (max 2 copies of a datasheet, 4 for Battleline), enhancement eligibility, and unique Epic Heroes. Battle-size limits live in `GAME_SIZES` (`src/data/index.ts`).
 - **Save** lists to your browser, **export**/**import** them as `.nr.json` files.
 
 ### Not yet (planned)
-- Datasheets for the ~1% of **brand-new 11th-edition units** (no 10e equivalent to carry over).
-- **Wargear/loadout selection** affecting points (costs are displayed, not yet selectable).
-- **Detachment Points budget** enforcement, and requisition-threshold pricing tiers.
-- Merging Space Marine **chapters** under one faction.
+- **Multiple detachments** per army (the DP budget supports it; the model currently holds one detachment).
+- **Wargear/loadout selection** and **Leader/Support attachment** affecting the list (data is present; not yet selectable).
+- **Requisition-threshold** pricing tiers (3rd+ copy costs more).
+- Datasheets for the ~1% of **brand-new 11th-edition units**; merging Space Marine **chapters** under one faction.
+
+> ⚠️ The battle-size numbers (points, DP, enhancement caps) are community-sourced
+> from the 11th-edition Core Rules and should be verified against the official
+> free Core Rules PDF; they're centralised in `GAME_SIZES` for easy correction.
 
 Lists are stored locally in the browser (`localStorage`) — no account or server required.
 

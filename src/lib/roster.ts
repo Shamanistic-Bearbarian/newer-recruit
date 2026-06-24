@@ -1,12 +1,18 @@
 // Roster model + the list-building engine: points totals and validation.
 //
-// Validation rules below follow the GENERAL structure of recent WH40k army
-// construction (10th ed style), used as a sensible placeholder until 11th
-// edition is released. They are intentionally centralised here so they are easy
-// to update when real rules exist.
+// Validation implements 11th-edition "Muster Armies" rules: a per-battle-size
+// Detachment Points budget, enhancement cap and the rule-of-two/four, plus
+// enhancement and Epic Hero restrictions. The numeric limits live in
+// GAME_SIZES (src/data/index.ts) so they are easy to correct.
 
 import type { Datasheet, Detachment, Enhancement, Faction } from "@/data/types";
-import { getDatasheet, getDetachment, getEnhancement, getFaction } from "@/data";
+import {
+  getDatasheet,
+  getDetachment,
+  getEnhancement,
+  getFaction,
+  gameSizeForPoints,
+} from "@/data";
 
 /** A unit instance placed into a roster. */
 export type RosterUnit = {
@@ -30,9 +36,16 @@ export type Roster = {
   updatedAt: number;
 };
 
-// --- Construction limits (placeholder values, easy to change) ---------------
-export const MAX_ENHANCEMENTS_PER_ARMY = 3;
-export const MAX_ENHANCEMENTS_PER_UNIT = 1;
+// An "Upgrade"-tagged enhancement may go on non-Character units, and counts as
+// a single enhancement choice even if shared across units. The MFM marks these
+// with "(Upgrade)" in the name.
+export function isUpgradeEnhancement(enh: Enhancement | undefined): boolean {
+  return !!enh && /\(upgrade\)/i.test(enh.name);
+}
+
+function isBattleline(ds: Datasheet): boolean {
+  return ds.role === "Battleline" || ds.keywords.includes("Battleline");
+}
 
 // --- Lookups for a roster unit ----------------------------------------------
 
@@ -53,8 +66,20 @@ export function rosterPoints(roster: Roster): number {
   return roster.units.reduce((sum, u) => sum + unitPoints(u), 0);
 }
 
+/**
+ * Number of enhancement *choices* used. A normal enhancement counts per unit;
+ * an Upgrade enhancement counts once no matter how many units share it.
+ */
 export function enhancementsUsed(roster: Roster): number {
-  return roster.units.filter((u) => u.enhancementId).length;
+  let normal = 0;
+  const upgradeIds = new Set<string>();
+  for (const u of roster.units) {
+    if (!u.enhancementId) continue;
+    const enh = getEnhancement(u.enhancementId);
+    if (isUpgradeEnhancement(enh)) upgradeIds.add(u.enhancementId);
+    else normal++;
+  }
+  return normal + upgradeIds.size;
 }
 
 // --- Validation -------------------------------------------------------------
@@ -82,10 +107,15 @@ export function eligibleEnhancements(
     ? getDetachment(roster.detachmentId)
     : undefined;
   const ds = getDatasheet(u.datasheetId);
-  if (!detachment || !ds || !ds.isCharacter || ds.isEpicHero) return [];
+  // Epic Heroes can never take an enhancement.
+  if (!detachment || !ds || ds.isEpicHero) return [];
   return detachment.enhancements.filter((e) => {
-    if (!e.requiresKeywords?.length) return true;
-    return e.requiresKeywords.every((k) => ds.keywords.includes(k));
+    // Normal enhancements: Characters only. Upgrade enhancements: any unit.
+    if (!isUpgradeEnhancement(e) && !ds.isCharacter) return false;
+    if (e.requiresKeywords?.length) {
+      return e.requiresKeywords.every((k) => ds.keywords.includes(k));
+    }
+    return true;
   });
 }
 
@@ -112,6 +142,8 @@ export function validateRoster(roster: Roster): ValidationResult {
     });
   }
 
+  const size = gameSizeForPoints(roster.pointsLimit);
+
   const total = rosterPoints(roster);
   if (total > roster.pointsLimit) {
     errors.push({
@@ -126,12 +158,20 @@ export function validateRoster(roster: Roster): ValidationResult {
     warnings.push({ level: "warning", message: "Roster is empty." });
   }
 
-  // Enhancement rules.
-  const enhCount = enhancementsUsed(roster);
-  if (enhCount > MAX_ENHANCEMENTS_PER_ARMY) {
+  // Detachment Points budget (single detachment for now; multi-detachment TBD).
+  if (detachment && detachment.dp != null && detachment.dp > size.dp) {
     errors.push({
       level: "error",
-      message: `Too many enhancements: ${enhCount} (max ${MAX_ENHANCEMENTS_PER_ARMY}).`,
+      message: `Detachment "${detachment.name}" costs ${detachment.dp} DP, over the ${size.dp} DP budget for ${size.name}.`,
+    });
+  }
+
+  // Enhancement cap (per battle size).
+  const enhCount = enhancementsUsed(roster);
+  if (enhCount > size.enhancements) {
+    errors.push({
+      level: "error",
+      message: `Too many enhancements: ${enhCount} (max ${size.enhancements} at ${size.name}).`,
     });
   }
 
@@ -149,10 +189,15 @@ export function validateRoster(roster: Roster): ValidationResult {
       });
       continue;
     }
-    if (ds && (!ds.isCharacter || ds.isEpicHero)) {
+    if (ds?.isEpicHero) {
       errors.push({
         level: "error",
-        message: `${label} cannot take an enhancement (only non-Epic-Hero Characters can).`,
+        message: `${label} is an Epic Hero and cannot take an enhancement.`,
+      });
+    } else if (ds && !ds.isCharacter && !isUpgradeEnhancement(enh)) {
+      errors.push({
+        level: "error",
+        message: `${label} cannot take "${enh.name}" — only Characters can (this is not an Upgrade enhancement).`,
       });
     }
     if (detachment && enh.detachmentId !== detachment.id) {
@@ -161,13 +206,54 @@ export function validateRoster(roster: Roster): ValidationResult {
         message: `Enhancement "${enh.name}" is not from the selected detachment.`,
       });
     }
-    if (seenEnhancements.has(enh.id)) {
+    // Normal enhancements are once-per-army; Upgrade enhancements may be shared
+    // across up to 3 units (checked separately below).
+    if (!isUpgradeEnhancement(enh)) {
+      if (seenEnhancements.has(enh.id)) {
+        errors.push({
+          level: "error",
+          message: `Enhancement "${enh.name}" is used more than once (each may be taken once).`,
+        });
+      }
+      seenEnhancements.add(enh.id);
+    }
+  }
+
+  // Upgrade enhancements: at most 3 units may share one.
+  const upgradeUse = new Map<string, number>();
+  for (const u of roster.units) {
+    const enh = u.enhancementId ? getEnhancement(u.enhancementId) : undefined;
+    if (isUpgradeEnhancement(enh)) {
+      upgradeUse.set(u.enhancementId!, (upgradeUse.get(u.enhancementId!) ?? 0) + 1);
+    }
+  }
+  for (const [id, count] of upgradeUse) {
+    if (count > 3) {
       errors.push({
         level: "error",
-        message: `Enhancement "${enh.name}" is used more than once (each may be taken once).`,
+        message: `Upgrade "${getEnhancement(id)?.name ?? id}" is on ${count} units (max 3).`,
       });
     }
-    seenEnhancements.add(enh.id);
+  }
+
+  // Rule of two/four: max copies of any datasheet (Epic Heroes handled below).
+  const copies = new Map<string, number>();
+  for (const u of roster.units) {
+    const ds = getDatasheet(u.datasheetId);
+    if (!ds || ds.isEpicHero) continue;
+    copies.set(ds.id, (copies.get(ds.id) ?? 0) + 1);
+  }
+  for (const [id, count] of copies) {
+    const ds = getDatasheet(id)!;
+    const limit = isBattleline(ds) ? size.battlelineCopyLimit : size.unitCopyLimit;
+    if (count > limit) {
+      errors.push({
+        level: "error",
+        message: `${ds.name}: ${count} copies, max ${limit}${
+          isBattleline(ds) ? " (Battleline)" : ""
+        }.`,
+      });
+    }
   }
 
   // Epic Heroes are unique.

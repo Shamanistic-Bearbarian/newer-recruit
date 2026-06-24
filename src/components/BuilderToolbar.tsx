@@ -4,8 +4,14 @@
 // the running points bar, and Save / Export / New actions.
 
 import { useState } from "react";
-import { FACTIONS, GAME_SIZES, factionDetachments, getDetachment } from "@/data";
-import { rosterPoints, type Roster } from "@/lib/roster";
+import {
+  FACTIONS,
+  GAME_SIZES,
+  factionDetachments,
+  gameSizeForPoints,
+  getDetachment,
+} from "@/data";
+import { enhancementsUsed, rosterPoints, type Roster } from "@/lib/roster";
 import { useBuilder } from "@/lib/useBuilder";
 import { rosterToFileBlob, suggestedFileName } from "@/lib/storage";
 
@@ -35,8 +41,13 @@ export default function BuilderToolbar({ roster }: { roster: Roster }) {
   const pct = Math.min(100, Math.round((total / roster.pointsLimit) * 100));
   const over = total > roster.pointsLimit;
   const detachments = factionDetachments(roster.factionId);
-  const detachmentValid =
-    roster.detachmentId && getDetachment(roster.detachmentId);
+  const selectedDetachment = roster.detachmentId
+    ? getDetachment(roster.detachmentId)
+    : undefined;
+  const detachmentValid = roster.detachmentId && selectedDetachment;
+  const size = gameSizeForPoints(roster.pointsLimit);
+  const dpUsed = selectedDetachment?.dp ?? 0;
+  const enhUsed = enhancementsUsed(roster);
 
   function onSave() {
     saveCurrentToLibrary();
@@ -140,6 +151,14 @@ export default function BuilderToolbar({ roster }: { roster: Roster }) {
             className={`h-full ${over ? "bg-rose-500" : "bg-emerald-500"}`}
             style={{ width: `${pct}%` }}
           />
+        </div>
+        <div className="mt-1 flex gap-4 text-xs text-slate-400">
+          <span className={dpUsed > size.dp ? "text-rose-400" : ""}>
+            Detachment Points: {dpUsed} / {size.dp}
+          </span>
+          <span className={enhUsed > size.enhancements ? "text-rose-400" : ""}>
+            Enhancements: {enhUsed} / {size.enhancements}
+          </span>
         </div>
       </div>
     </div>

@@ -140,9 +140,17 @@ export type Faction = {
   detachments: Detachment[];
 };
 
-/** A standard game size / points bracket. */
+/** A standard game size / points bracket and its army-construction limits. */
 export type GameSize = {
   id: string;
   name: string;
   points: number;
+  /** Detachment Points budget (sum of chosen detachments' DP must not exceed). */
+  dp: number;
+  /** Maximum number of Enhancements in the army. */
+  enhancements: number;
+  /** Max copies of any one datasheet (the "rule of two"). */
+  unitCopyLimit: number;
+  /** Max copies of a Battleline datasheet (the "rule of four"). */
+  battlelineCopyLimit: number;
 };
