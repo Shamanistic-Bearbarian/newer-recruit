@@ -18,14 +18,13 @@ export default function DatasheetView({ datasheet }: { datasheet: Datasheet }) {
   return (
     <div className="space-y-3 text-slate-200">
       {datasheet.provisional && (
-        <p className="rounded bg-amber-950/50 px-2 py-1 text-[0.7rem] text-amber-300">
-          Profile shown is 10th-edition data (provisional) — 11th-edition
-          datasheet not yet published. Points are 11th edition.
+        <p className="text-[0.7rem] text-slate-500">
+          Datasheet from 10th edition (unchanged in 11th). Points are 11th edition.
         </p>
       )}
       {!hasProfile && (
-        <p className="rounded bg-slate-800 px-2 py-1 text-[0.7rem] text-slate-400">
-          No datasheet profile available yet for 11th edition. Points &amp;
+        <p className="rounded bg-amber-950/40 px-2 py-1 text-[0.7rem] text-amber-300/90">
+          New in 11th edition — no datasheet in the dataset yet. Points &amp;
           detachment data only.
         </p>
       )}

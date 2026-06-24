@@ -99,8 +99,10 @@ export type Datasheet = {
   /** Can be given an Enhancement (CHARACTER units that aren't Epic Heroes). */
   isCharacter?: boolean;
   /**
-   * True when the stat/weapon/ability profile is borrowed from a previous
-   * edition because the current edition's datasheet data isn't published yet.
+   * True when the stat/weapon/ability profile is sourced from the 10th-edition
+   * datasheet (which carries over unchanged into 11th). Points/detachments are
+   * always 11th edition. Absent for brand-new 11th-edition units that don't yet
+   * have a datasheet in the dataset.
    */
   provisional?: boolean;
 };

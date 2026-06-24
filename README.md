@@ -2,14 +2,14 @@
 
 A web-based army list builder for **Warhammer 40,000 (11th edition)** — inspired by [New Recruit](https://www.newrecruit.eu/).
 
-> ⚠️ **11th-edition data is partial.** Points, detachments, enhancements and
-> wargear costs come from the official **Munitorum Field Manual** (via
+> ℹ️ **11th-edition data.** Points, detachments, enhancements and wargear costs
+> come from the official **Munitorum Field Manual** (via
 > [`BSData/wh40k-11e-mfm`](https://github.com/BSData/wh40k-11e-mfm), 30 factions).
-> The actual **datasheets** (stat lines, weapon profiles, abilities) aren't
-> published for 11th edition yet, so they're borrowed from 10th-edition
-> [BSData](https://github.com/BSData/wh40k-10e) by unit name (~93% matched) and
-> shown as **provisional**. When an 11th-edition catalogue ships, point the
-> importer at it and regenerate.
+> **Datasheets** (stat lines, weapon profiles, abilities) carry over unchanged
+> from 10th edition, so they're taken from 10th-edition
+> [BSData](https://github.com/BSData/wh40k-10e), matched by unit name (~99%).
+> The remaining ~1% are brand-new 11th-edition units that don't have a datasheet
+> in the dataset yet (shown with points/detachment data only).
 
 ## Features (MVP)
 
@@ -21,7 +21,7 @@ A web-based army list builder for **Warhammer 40,000 (11th edition)** — inspir
 - **Save** lists to your browser, **export**/**import** them as `.nr.json` files.
 
 ### Not yet (planned)
-- True **11th-edition datasheet profiles** (await an 11e catalogue; profiles are currently provisional 10e).
+- Datasheets for the ~1% of **brand-new 11th-edition units** (no 10e equivalent to carry over).
 - **Wargear/loadout selection** affecting points (costs are displayed, not yet selectable).
 - **Detachment Points budget** enforcement, and requisition-threshold pricing tiers.
 - Merging Space Marine **chapters** under one faction.

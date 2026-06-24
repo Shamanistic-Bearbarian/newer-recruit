@@ -233,60 +233,72 @@ export function slug(s) {
   return s.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
 }
 
-/**
- * Parse a BSData checkout and return the faction array (does not write files).
- * Reusable by the MFM importer, which borrows these profiles by unit name.
- */
-export function buildTenth(srcDir) {
+/** Parse every .gst/.cat in a checkout and populate the global id indexes. */
+function parseAndIndex(srcDir) {
   const files = readdirSync(srcDir).filter(
     (f) => f.endsWith(".cat") || f.endsWith(".gst")
   );
-
   console.log(`Parsing ${files.length} BSData files & indexing ids…`);
-  const parsed = new Map(); // filename -> parsed root object
+  const parsed = [];
   for (const f of files) {
-    const xml = readFileSync(join(srcDir, f), "utf-8");
-    const obj = parser.parse(xml);
-    parsed.set(f, obj);
+    const obj = parser.parse(readFileSync(join(srcDir, f), "utf-8"));
+    parsed.push(obj);
     indexNode(obj);
   }
   console.log(
     `Indexed: ${profileIndex.size} profiles, ${entryIndex.size} entries, ${ruleIndex.size} rules.`
   );
+  return parsed;
+}
 
-  const factions = [];
-  for (const obj of parsed.values()) {
-    const cat = obj.catalogue;
-    if (!cat) continue; // .gst (game system) — index only
-    if (cat.library === "true") continue; // shared library — index only
-
-    const datasheets = [];
-    const roots = [
-      ...arr(cat.selectionEntries?.selectionEntry),
-      ...arr(cat.entryLinks?.entryLink)
-        .map((el) => entryIndex.get(el.targetId))
-        .filter(Boolean),
-    ];
-    for (const root of roots) {
-      if (root.type !== "unit" && root.type !== "model") continue;
-      if ((root.name ?? "").includes("[Legends]")) continue;
-      const ds = extractDatasheet(root);
-      if (ds.models.length === 0 && ds.weapons.length === 0) continue;
-      datasheets.push({ ...ds, factionId: slug(cat.name) });
-    }
-    if (datasheets.length === 0) continue;
-
-    datasheets.sort((a, b) => a.name.localeCompare(b.name));
-    factions.push({
-      id: slug(cat.name),
-      name: cat.name,
-      datasheets,
-      detachments: [], // Stage 2
-    });
+/** Extract the datasheets defined directly in one catalogue. */
+function catalogueDatasheets(cat) {
+  const datasheets = [];
+  const roots = [
+    ...arr(cat.selectionEntries?.selectionEntry),
+    ...arr(cat.entryLinks?.entryLink)
+      .map((el) => entryIndex.get(el.targetId))
+      .filter(Boolean),
+  ];
+  for (const root of roots) {
+    if (root.type !== "unit" && root.type !== "model") continue;
+    if ((root.name ?? "").includes("[Legends]")) continue;
+    const ds = extractDatasheet(root);
+    if (ds.models.length === 0 && ds.weapons.length === 0) continue;
+    datasheets.push({ ...ds, factionId: slug(cat.name) });
   }
+  return datasheets;
+}
 
+/**
+ * Build the faction array (does not write files). Skips Library catalogues —
+ * their datasheets are reached via {@link buildAllDatasheets} instead.
+ */
+export function buildTenth(srcDir) {
+  const factions = [];
+  for (const obj of parseAndIndex(srcDir)) {
+    const cat = obj.catalogue;
+    if (!cat || cat.library === "true") continue;
+    const datasheets = catalogueDatasheets(cat);
+    if (datasheets.length === 0) continue;
+    datasheets.sort((a, b) => a.name.localeCompare(b.name));
+    factions.push({ id: slug(cat.name), name: cat.name, datasheets, detachments: [] });
+  }
   factions.sort((a, b) => a.name.localeCompare(b.name));
   return factions;
+}
+
+/**
+ * Every unit datasheet across ALL catalogues, including shared Library files
+ * (which is where some factions — Daemons, Knights — keep their datasheets).
+ * Used by the MFM importer to borrow profiles by unit name.
+ */
+export function buildAllDatasheets(srcDir) {
+  const all = [];
+  for (const obj of parseAndIndex(srcDir)) {
+    if (obj.catalogue) all.push(...catalogueDatasheets(obj.catalogue));
+  }
+  return all;
 }
 
 function main() {

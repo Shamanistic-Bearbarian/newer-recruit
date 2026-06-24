@@ -4,9 +4,9 @@
     "points": "https://github.com/BSData/wh40k-11e-mfm.git",
     "provisionalProfiles": "https://github.com/BSData/wh40k-10e.git"
   },
-  "generatedAt": "2026-06-19T09:06:51.858Z",
+  "generatedAt": "2026-06-24T12:09:37.956Z",
   "factionCount": 30,
   "datasheetCount": 1462,
   "detachmentCount": 339,
-  "profileCoveragePct": 93
+  "profileCoveragePct": 99
 }

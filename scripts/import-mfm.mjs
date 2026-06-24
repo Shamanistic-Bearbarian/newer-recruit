@@ -17,7 +17,7 @@ import { execSync } from "node:child_process";
 import { existsSync, mkdirSync, readdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
-import { buildTenth, slug } from "./import-bsdata.mjs";
+import { buildAllDatasheets, slug } from "./import-bsdata.mjs";
 
 const MFM_REPO = "https://github.com/BSData/wh40k-11e-mfm.git";
 const TENTH_REPO = "https://github.com/BSData/wh40k-10e.git";
@@ -47,19 +47,46 @@ function norm(name) {
     .trim();
 }
 
+// Name variants for matching 11e MFM names to 10e datasheets:
+// - "Chaos Reaver Titan" -> "Reaver Titan" (Titan Legions share profiles)
+// - "Eradicator Squad With Heavy Bolters" -> "Eradicator Squad" (wargear variant)
+// - "Myphitic Blight-Haulers" -> "Myphitic Blight-Hauler" (plural)
+const stripChaos = (s) => (s.startsWith("chaos ") ? s.slice(6) : s);
+const stripWith = (s) => (s.includes(" with ") ? s.slice(0, s.indexOf(" with ")) : s);
+const singular = (s) => (s.endsWith("s") ? s.slice(0, -1) : s);
+
+function nameVariants(name) {
+  const base = norm(name);
+  const out = new Set();
+  for (const a of [(x) => x, stripChaos]) {
+    for (const b of [(x) => x, stripWith]) {
+      for (const c of [(x) => x, singular]) {
+        const v = c(b(a(base))).trim();
+        if (v) out.add(v);
+      }
+    }
+  }
+  return [...out];
+}
+
 function main() {
   const mfmDir = ensureRepo("wh40k-11e-mfm", MFM_REPO, join("data", "meta.yaml"));
   const tenthDir = ensureRepo("wh40k-10e", TENTH_REPO, "Warhammer 40,000.gst");
 
-  // 10th-edition profiles, indexed by normalised unit name (for borrowing).
-  const tenth = buildTenth(tenthDir);
+  // 10th-edition profiles (from ALL catalogues incl. libraries), indexed by
+  // normalised unit name for borrowing.
   const profileByName = new Map();
-  for (const f of tenth) {
-    for (const ds of f.datasheets) {
-      const key = norm(ds.name);
-      if (!profileByName.has(key)) profileByName.set(key, ds);
-    }
+  for (const ds of buildAllDatasheets(tenthDir)) {
+    const key = norm(ds.name);
+    if (!profileByName.has(key)) profileByName.set(key, ds);
   }
+  const findProfile = (name) => {
+    for (const v of nameVariants(name)) {
+      const hit = profileByName.get(v);
+      if (hit) return hit;
+    }
+    return undefined;
+  };
   console.log(`Indexed ${profileByName.size} 10e profiles for borrowing.`);
 
   const dataDir = join(mfmDir, "data");
@@ -109,7 +136,7 @@ function main() {
         ? baseCosts.map((c) => ({ models: c.models, points: c.points }))
         : [{ models: 0, points: u.pricing?.[0]?.costs?.[0]?.points ?? 0 }];
 
-      const profile = profileByName.get(norm(u.name));
+      const profile = findProfile(u.name);
       if (profile) matched++;
       const isLeader = u.role === "leader";
 
