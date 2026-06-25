@@ -25,7 +25,7 @@ import {
   saveCurrentRoster,
   upsertRoster,
 } from "@/lib/storage";
-import { factionDetachments, getFaction } from "@/data";
+import { getDetachment, getFaction } from "@/data";
 
 type Action =
   | { type: "hydrate"; current: Roster | null }
@@ -34,7 +34,8 @@ type Action =
   | { type: "clear" }
   | { type: "setName"; name: string }
   | { type: "setFaction"; factionId: string }
-  | { type: "setDetachment"; detachmentId: string }
+  | { type: "addDetachment"; detachmentId: string }
+  | { type: "removeDetachment"; detachmentId: string }
   | { type: "setPointsLimit"; pointsLimit: number }
   | { type: "addUnit"; datasheetId: string }
   | { type: "removeUnit"; instanceId: string }
@@ -78,22 +79,37 @@ function reducer(state: Roster | null, action: Action): Roster | null {
       return touch({ ...state, name: action.name });
     case "setFaction": {
       if (action.factionId === state.factionId) return state;
-      // Faction change invalidates detachment + units.
-      const firstDet = factionDetachments(action.factionId)[0]?.id;
+      // Faction change invalidates detachments + units.
       return touch({
         ...state,
         factionId: action.factionId,
-        detachmentId: firstDet,
+        detachmentIds: [],
         units: [],
       });
     }
-    case "setDetachment":
-      // Changing detachment invalidates attached enhancements.
+    case "addDetachment":
+      if (state.detachmentIds.includes(action.detachmentId)) return state;
       return touch({
         ...state,
-        detachmentId: action.detachmentId,
-        units: state.units.map((u) => ({ ...u, enhancementId: undefined })),
+        detachmentIds: [...state.detachmentIds, action.detachmentId],
       });
+    case "removeDetachment": {
+      // Removing a detachment clears any enhancements it provided.
+      const removedEnh = new Set(
+        getDetachment(action.detachmentId)?.enhancements.map((e) => e.id) ?? []
+      );
+      return touch({
+        ...state,
+        detachmentIds: state.detachmentIds.filter(
+          (id) => id !== action.detachmentId
+        ),
+        units: state.units.map((u) =>
+          u.enhancementId && removedEnh.has(u.enhancementId)
+            ? { ...u, enhancementId: undefined }
+            : u
+        ),
+      });
+    }
     case "setPointsLimit":
       return touch({ ...state, pointsLimit: action.pointsLimit });
     case "addUnit":
@@ -128,14 +144,15 @@ type BuilderContextValue = {
   startNewList: (params: {
     name?: string;
     factionId: string;
-    detachmentId?: string;
+    detachmentIds?: string[];
     pointsLimit: number;
   }) => void;
   loadList: (roster: Roster) => void;
   clearCurrent: () => void;
   setName: (name: string) => void;
   setFaction: (factionId: string) => void;
-  setDetachment: (detachmentId: string) => void;
+  addDetachment: (detachmentId: string) => void;
+  removeDetachment: (detachmentId: string) => void;
   setPointsLimit: (pointsLimit: number) => void;
   addUnit: (datasheetId: string) => void;
   removeUnit: (instanceId: string) => void;
@@ -183,8 +200,10 @@ export function BuilderProvider({ children }: { children: ReactNode }) {
       clearCurrent: () => dispatch({ type: "clear" }),
       setName: (name) => dispatch({ type: "setName", name }),
       setFaction: (factionId) => dispatch({ type: "setFaction", factionId }),
-      setDetachment: (detachmentId) =>
-        dispatch({ type: "setDetachment", detachmentId }),
+      addDetachment: (detachmentId) =>
+        dispatch({ type: "addDetachment", detachmentId }),
+      removeDetachment: (detachmentId) =>
+        dispatch({ type: "removeDetachment", detachmentId }),
       setPointsLimit: (pointsLimit) =>
         dispatch({ type: "setPointsLimit", pointsLimit }),
       addUnit: (datasheetId) => dispatch({ type: "addUnit", datasheetId }),

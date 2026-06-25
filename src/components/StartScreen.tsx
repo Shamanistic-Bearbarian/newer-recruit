@@ -107,7 +107,12 @@ export default function StartScreen() {
 
           <button
             onClick={() =>
-              startNewList({ name, factionId, detachmentId, pointsLimit })
+              startNewList({
+                name,
+                factionId,
+                detachmentIds: detachmentId ? [detachmentId] : [],
+                pointsLimit,
+              })
             }
             disabled={!factionId}
             className="mt-2 w-full rounded-md bg-emerald-600 px-4 py-2 font-medium text-white hover:bg-emerald-500 disabled:opacity-50"

@@ -29,12 +29,36 @@ export type Roster = {
   id: string;
   name: string;
   factionId: string;
-  detachmentId?: string;
+  /** Selected detachments (11e allows several within the DP budget). */
+  detachmentIds: string[];
   pointsLimit: number;
   units: RosterUnit[];
   /** Epoch millis of last edit. */
   updatedAt: number;
 };
+
+/** A 3 DP detachment is army-defining: it can't be combined and needs ≥2000 pts. */
+export const EXCLUSIVE_DP = 3;
+export const EXCLUSIVE_DP_MIN_POINTS = 2000;
+
+/** Migrate older single-detachment rosters to the detachmentIds array. */
+export function migrateRoster(r: Roster & { detachmentId?: string }): Roster {
+  if (Array.isArray(r.detachmentIds)) return r;
+  const ids = r.detachmentId ? [r.detachmentId] : [];
+  const { detachmentId: _drop, ...rest } = r;
+  void _drop;
+  return { ...rest, detachmentIds: ids };
+}
+
+export function rosterDetachments(roster: Roster): Detachment[] {
+  return roster.detachmentIds
+    .map((id) => getDetachment(id))
+    .filter((d): d is Detachment => !!d);
+}
+
+export function rosterDpUsed(roster: Roster): number {
+  return rosterDetachments(roster).reduce((sum, d) => sum + (d.dp ?? 0), 0);
+}
 
 // An "Upgrade"-tagged enhancement may go on non-Character units, and counts as
 // a single enhancement choice even if shared across units. The MFM marks these
@@ -103,20 +127,20 @@ export function eligibleEnhancements(
   roster: Roster,
   u: RosterUnit
 ): Enhancement[] {
-  const detachment = roster.detachmentId
-    ? getDetachment(roster.detachmentId)
-    : undefined;
   const ds = getDatasheet(u.datasheetId);
   // Epic Heroes can never take an enhancement.
-  if (!detachment || !ds || ds.isEpicHero) return [];
-  return detachment.enhancements.filter((e) => {
-    // Normal enhancements: Characters only. Upgrade enhancements: any unit.
-    if (!isUpgradeEnhancement(e) && !ds.isCharacter) return false;
-    if (e.requiresKeywords?.length) {
-      return e.requiresKeywords.every((k) => ds.keywords.includes(k));
-    }
-    return true;
-  });
+  if (!ds || ds.isEpicHero) return [];
+  // Enhancements from any of the selected detachments are available.
+  return rosterDetachments(roster)
+    .flatMap((d) => d.enhancements)
+    .filter((e) => {
+      // Normal enhancements: Characters only. Upgrade enhancements: any unit.
+      if (!isUpgradeEnhancement(e) && !ds.isCharacter) return false;
+      if (e.requiresKeywords?.length) {
+        return e.requiresKeywords.every((k) => ds.keywords.includes(k));
+      }
+      return true;
+    });
 }
 
 export function validateRoster(roster: Roster): ValidationResult {
@@ -124,25 +148,31 @@ export function validateRoster(roster: Roster): ValidationResult {
   const warnings: ValidationIssue[] = [];
 
   const faction: Faction | undefined = getFaction(roster.factionId);
-  const detachment: Detachment | undefined = roster.detachmentId
-    ? getDetachment(roster.detachmentId)
-    : undefined;
+  const detachments = rosterDetachments(roster);
+  const detachmentIdSet = new Set(detachments.map((d) => d.id));
+  const size = gameSizeForPoints(roster.pointsLimit);
 
   if (!faction) {
     errors.push({ level: "error", message: "No faction selected." });
   }
-  // Detachments are only required for factions that define them (Stage 2 data).
   const factionHasDetachments = (faction?.detachments.length ?? 0) > 0;
-  if (factionHasDetachments && !detachment) {
+  if (factionHasDetachments && detachments.length === 0) {
     errors.push({ level: "error", message: "No detachment selected." });
-  } else if (detachment && detachment.factionId !== roster.factionId) {
+  }
+  for (const d of detachments) {
+    if (d.factionId !== roster.factionId) {
+      errors.push({
+        level: "error",
+        message: `Detachment "${d.name}" does not belong to this faction.`,
+      });
+    }
+  }
+  if (new Set(roster.detachmentIds).size !== roster.detachmentIds.length) {
     errors.push({
       level: "error",
-      message: `Detachment "${detachment.name}" does not belong to this faction.`,
+      message: "The same detachment is selected more than once.",
     });
   }
-
-  const size = gameSizeForPoints(roster.pointsLimit);
 
   const total = rosterPoints(roster);
   if (total > roster.pointsLimit) {
@@ -158,11 +188,26 @@ export function validateRoster(roster: Roster): ValidationResult {
     warnings.push({ level: "warning", message: "Roster is empty." });
   }
 
-  // Detachment Points budget (single detachment for now; multi-detachment TBD).
-  if (detachment && detachment.dp != null && detachment.dp > size.dp) {
+  // Detachment Points: total cost must fit the battle-size budget.
+  const dpUsed = rosterDpUsed(roster);
+  if (dpUsed > size.dp) {
     errors.push({
       level: "error",
-      message: `Detachment "${detachment.name}" costs ${detachment.dp} DP, over the ${size.dp} DP budget for ${size.name}.`,
+      message: `Detachments cost ${dpUsed} DP, over the ${size.dp} DP budget for ${size.name}.`,
+    });
+  }
+  // A 3 DP detachment is army-defining: it must be the only one and needs ≥2000 pts.
+  const exclusive = detachments.find((d) => (d.dp ?? 0) >= EXCLUSIVE_DP);
+  if (exclusive && detachments.length > 1) {
+    errors.push({
+      level: "error",
+      message: `"${exclusive.name}" (${exclusive.dp} DP) can't be combined with another detachment.`,
+    });
+  }
+  if (exclusive && roster.pointsLimit < EXCLUSIVE_DP_MIN_POINTS) {
+    errors.push({
+      level: "error",
+      message: `"${exclusive.name}" (${exclusive.dp} DP) can only be used at ${EXCLUSIVE_DP_MIN_POINTS}+ points.`,
     });
   }
 
@@ -200,10 +245,10 @@ export function validateRoster(roster: Roster): ValidationResult {
         message: `${label} cannot take "${enh.name}" — only Characters can (this is not an Upgrade enhancement).`,
       });
     }
-    if (detachment && enh.detachmentId !== detachment.id) {
+    if (detachmentIdSet.size > 0 && !detachmentIdSet.has(enh.detachmentId)) {
       errors.push({
         level: "error",
-        message: `Enhancement "${enh.name}" is not from the selected detachment.`,
+        message: `Enhancement "${enh.name}" is not from a selected detachment.`,
       });
     }
     // Normal enhancements are once-per-army; Upgrade enhancements may be shared
@@ -288,14 +333,14 @@ function uid(prefix: string): string {
 export function newRoster(params: {
   name?: string;
   factionId: string;
-  detachmentId?: string;
+  detachmentIds?: string[];
   pointsLimit: number;
 }): Roster {
   return {
     id: uid("roster"),
     name: params.name?.trim() || "Untitled List",
     factionId: params.factionId,
-    detachmentId: params.detachmentId,
+    detachmentIds: params.detachmentIds ?? [],
     pointsLimit: params.pointsLimit,
     units: [],
     updatedAt: Date.now(),

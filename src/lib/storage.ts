@@ -1,7 +1,7 @@
 // Local persistence for rosters, plus file export/import. Browser-only;
 // every function guards against running on the server.
 
-import type { Roster } from "@/lib/roster";
+import { migrateRoster, type Roster } from "@/lib/roster";
 
 const SAVED_KEY = "nr:rosters";
 const CURRENT_KEY = "nr:current";
@@ -34,7 +34,8 @@ function writeJson(key: string, value: unknown): void {
 
 export function loadSavedRosters(): Roster[] {
   const list = readJson<Roster[]>(SAVED_KEY, []);
-  return Array.isArray(list) ? list.sort((a, b) => b.updatedAt - a.updatedAt) : [];
+  if (!Array.isArray(list)) return [];
+  return list.map(migrateRoster).sort((a, b) => b.updatedAt - a.updatedAt);
 }
 
 /** Insert or update a roster in the saved library (by id). */
@@ -54,7 +55,8 @@ export function deleteRoster(id: string): Roster[] {
 // --- Working roster (autosaved draft) ---------------------------------------
 
 export function loadCurrentRoster(): Roster | null {
-  return readJson<Roster | null>(CURRENT_KEY, null);
+  const r = readJson<Roster | null>(CURRENT_KEY, null);
+  return r ? migrateRoster(r) : null;
 }
 
 export function saveCurrentRoster(roster: Roster | null): void {
@@ -97,5 +99,5 @@ export function parseRosterFile(text: string): Roster {
   ) {
     throw new Error("This file does not contain a valid newer-recruit list.");
   }
-  return roster;
+  return migrateRoster(roster);
 }

@@ -13,16 +13,16 @@ A web-based army list builder for **Warhammer 40,000 (11th edition)** — inspir
 
 ## Features (MVP)
 
-- Pick a **faction**, **detachment** (with Detachment Points), and **game size**.
+- Pick a **faction** and **game size**, and combine **multiple detachments** within your Detachment Points budget.
 - Browse a faction's complete **datasheet catalogue** (grouped by battlefield role): real 11th-edition **per-size points**, plus provisional 10e stat/weapon/ability profiles and wargear-option costs.
 - Attach **enhancements** (real 11e, per detachment) to eligible units, including the new **Upgrade** tag (non-Characters, shareable across up to 3 units).
 - Live **points / Detachment Points / enhancement** usage against your battle-size budget.
-- **11th-edition validation** ("Muster Armies"): points limit, Detachment Points budget, enhancement cap, the rule of two/four (max 2 copies of a datasheet, 4 for Battleline), enhancement eligibility, and unique Epic Heroes. Battle-size limits live in `GAME_SIZES` (`src/data/index.ts`).
+- **11th-edition validation** ("Muster Armies"): points limit, Detachment Points budget across multiple detachments (a 3 DP detachment must be solo and ≥2000 pts), enhancement cap, the rule of two/four (max 2 copies of a datasheet, 4 for Battleline), enhancement eligibility, and unique Epic Heroes. Battle-size limits live in `GAME_SIZES` (`src/data/index.ts`).
 - **Save** lists to your browser, **export**/**import** them as `.nr.json` files.
 
 ### Not yet (planned)
-- **Multiple detachments** per army (the DP budget supports it; the model currently holds one detachment).
 - **Wargear/loadout selection** and **Leader/Support attachment** affecting the list (data is present; not yet selectable).
+- Detachment **"Unique" tag** conflicts (the MFM scrape doesn't capture unique tags yet).
 - **Requisition-threshold** pricing tiers (3rd+ copy costs more).
 - Datasheets for the ~1% of **brand-new 11th-edition units**; merging Space Marine **chapters** under one faction.
 
