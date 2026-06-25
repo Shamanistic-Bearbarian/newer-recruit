@@ -152,6 +152,7 @@ function main() {
         sizes,
         wargear: (u.wargear ?? []).map((w) => ({ name: w.item, points: w.points })),
         attachTo: u.attachTo,
+        attachRole: u.role === "leader" || u.role === "support" ? u.role : undefined,
         isEpicHero: profile?.isEpicHero,
         isCharacter:
           profile?.isCharacter || isLeader || undefined,

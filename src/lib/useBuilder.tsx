@@ -44,6 +44,12 @@ type Action =
       type: "setUnitEnhancement";
       instanceId: string;
       enhancementId: string | undefined;
+    }
+  | { type: "setUnitWargear"; instanceId: string; item: string; qty: number }
+  | {
+      type: "setUnitAttachment";
+      instanceId: string;
+      targetInstanceId: string | undefined;
     };
 
 function touch(roster: Roster): Roster {
@@ -120,7 +126,14 @@ function reducer(state: Roster | null, action: Action): Roster | null {
     case "removeUnit":
       return touch({
         ...state,
-        units: state.units.filter((u) => u.instanceId !== action.instanceId),
+        units: state.units
+          .filter((u) => u.instanceId !== action.instanceId)
+          // Detach any characters that were attached to the removed unit.
+          .map((u) =>
+            u.attachedTo === action.instanceId
+              ? { ...u, attachedTo: undefined }
+              : u
+          ),
       });
     case "setUnitSize":
       return mapUnit(state, action.instanceId, (u) => ({
@@ -131,6 +144,18 @@ function reducer(state: Roster | null, action: Action): Roster | null {
       return mapUnit(state, action.instanceId, (u) => ({
         ...u,
         enhancementId: action.enhancementId,
+      }));
+    case "setUnitWargear":
+      return mapUnit(state, action.instanceId, (u) => {
+        const wargear = { ...(u.wargear ?? {}) };
+        if (action.qty > 0) wargear[action.item] = action.qty;
+        else delete wargear[action.item];
+        return { ...u, wargear };
+      });
+    case "setUnitAttachment":
+      return mapUnit(state, action.instanceId, (u) => ({
+        ...u,
+        attachedTo: action.targetInstanceId,
       }));
     default:
       return state;
@@ -158,6 +183,8 @@ type BuilderContextValue = {
   removeUnit: (instanceId: string) => void;
   setUnitSize: (instanceId: string, sizeIndex: number) => void;
   setUnitEnhancement: (instanceId: string, enhancementId?: string) => void;
+  setUnitWargear: (instanceId: string, item: string, qty: number) => void;
+  setUnitAttachment: (instanceId: string, targetInstanceId?: string) => void;
   saveCurrentToLibrary: () => void;
   deleteSaved: (id: string) => void;
 };
@@ -212,6 +239,10 @@ export function BuilderProvider({ children }: { children: ReactNode }) {
         dispatch({ type: "setUnitSize", instanceId, sizeIndex }),
       setUnitEnhancement: (instanceId, enhancementId) =>
         dispatch({ type: "setUnitEnhancement", instanceId, enhancementId }),
+      setUnitWargear: (instanceId, item, qty) =>
+        dispatch({ type: "setUnitWargear", instanceId, item, qty }),
+      setUnitAttachment: (instanceId, targetInstanceId) =>
+        dispatch({ type: "setUnitAttachment", instanceId, targetInstanceId }),
       saveCurrentToLibrary: () => {
         if (current) setSaved(upsertRoster(current));
       },

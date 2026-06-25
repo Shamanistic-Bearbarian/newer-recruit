@@ -90,8 +90,10 @@ export type Datasheet = {
   abilities: Ability[];
   /** Available unit sizes with points. Always at least one entry. */
   sizes: SizeOption[];
-  /** Optional wargear items with a per-item points cost (display/reference). */
+  /** Optional wargear items with a per-item points cost (added per item taken). */
   wargear?: { name: string; points: number }[];
+  /** Whether this unit attaches to others as a Leader or Support character. */
+  attachRole?: "leader" | "support";
   /** Units this Leader/Support can attach to (by name). */
   attachTo?: string[];
   /** Unique named character — at most one per army. */

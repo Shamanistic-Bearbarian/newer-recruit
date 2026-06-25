@@ -23,6 +23,10 @@ export type RosterUnit = {
   sizeIndex: number;
   /** Optional enhancement attached to this unit. */
   enhancementId?: string;
+  /** Wargear item name -> quantity taken (each adds the item's points). */
+  wargear?: Record<string, number>;
+  /** For a Leader/Support unit, the instanceId of the unit it is attached to. */
+  attachedTo?: string;
 };
 
 export type Roster = {
@@ -77,13 +81,37 @@ export function unitDatasheet(u: RosterUnit): Datasheet | undefined {
   return getDatasheet(u.datasheetId);
 }
 
+/** Points added by the unit's selected wargear items. */
+export function unitWargearPoints(u: RosterUnit): number {
+  const ds = getDatasheet(u.datasheetId);
+  if (!ds?.wargear || !u.wargear) return 0;
+  return ds.wargear.reduce(
+    (sum, w) => sum + (u.wargear?.[w.name] ?? 0) * w.points,
+    0
+  );
+}
+
 export function unitPoints(u: RosterUnit): number {
   const ds = getDatasheet(u.datasheetId);
   if (!ds) return 0;
   const size = ds.sizes[u.sizeIndex] ?? ds.sizes[0];
   const base = size?.points ?? 0;
   const enh = u.enhancementId ? getEnhancement(u.enhancementId) : undefined;
-  return base + (enh?.points ?? 0);
+  return base + (enh?.points ?? 0) + unitWargearPoints(u);
+}
+
+/** Units in the roster that this Leader/Support may attach to. */
+export function eligibleAttachTargets(
+  roster: Roster,
+  u: RosterUnit
+): RosterUnit[] {
+  const ds = getDatasheet(u.datasheetId);
+  if (!ds?.attachRole || !ds.attachTo?.length) return [];
+  return roster.units.filter((t) => {
+    if (t.instanceId === u.instanceId) return false;
+    const tds = getDatasheet(t.datasheetId);
+    return !!tds && ds.attachTo!.includes(tds.name);
+  });
 }
 
 export function rosterPoints(roster: Roster): number {
@@ -315,6 +343,65 @@ export function validateRoster(roster: Roster): ValidationResult {
       errors.push({
         level: "error",
         message: `${ds?.name ?? id} is an Epic Hero and may only be taken once (found ${count}).`,
+      });
+    }
+  }
+
+  // Leader / Support attachment rules.
+  const byInstance = new Map(roster.units.map((u) => [u.instanceId, u]));
+  const attachCounts = new Map<string, { leader: number; support: number }>();
+  for (const u of roster.units) {
+    if (!u.attachedTo) continue;
+    const ds = getDatasheet(u.datasheetId);
+    const label = ds?.name ?? u.datasheetId;
+    if (!ds?.attachRole) {
+      errors.push({
+        level: "error",
+        message: `${label} is attached to a unit but is not a Leader or Support.`,
+      });
+      continue;
+    }
+    const target = byInstance.get(u.attachedTo);
+    if (!target) {
+      errors.push({
+        level: "error",
+        message: `${label} is attached to a unit no longer in the list.`,
+      });
+      continue;
+    }
+    const targetDs = getDatasheet(target.datasheetId);
+    if (ds.attachTo?.length && targetDs && !ds.attachTo.includes(targetDs.name)) {
+      errors.push({
+        level: "error",
+        message: `${label} cannot attach to ${targetDs.name}.`,
+      });
+    }
+    const c = attachCounts.get(u.attachedTo) ?? { leader: 0, support: 0 };
+    c[ds.attachRole]++;
+    attachCounts.set(u.attachedTo, c);
+  }
+  for (const [tid, c] of attachCounts) {
+    const tname = getDatasheet(byInstance.get(tid)!.datasheetId)?.name ?? tid;
+    if (c.leader > 1) {
+      errors.push({
+        level: "error",
+        message: `${tname} has ${c.leader} Leaders attached (max 1).`,
+      });
+    }
+    if (c.support > 1) {
+      errors.push({
+        level: "error",
+        message: `${tname} has ${c.support} Support units attached (max 1).`,
+      });
+    }
+  }
+  // Support characters must be attached to a unit.
+  for (const u of roster.units) {
+    const ds = getDatasheet(u.datasheetId);
+    if (ds?.attachRole === "support" && !u.attachedTo) {
+      errors.push({
+        level: "error",
+        message: `${ds.name} (Support) must be attached to a unit.`,
       });
     }
   }
